@@ -46,29 +46,23 @@ def compare_preview_image_hash(current_image, preview_image, hash_function=image
 
 def compare_preview_image_similarity(current_image, preview_image):
     similarity = ssim.compute_ssim(Image.open(current_image), Image.open(preview_image))
-    print(similarity)
     return similarity
+
+
+class AdjacentKey(object):
+    __slots__ = ['obj']
+    def __init__(self, obj):
+        self.obj = obj
+    def __eq__(self, other):
+        similarity = compare_preview_image_similarity(self.obj, other.obj)
+        reasonable_match = similarity > 0.55
+        if reasonable_match:
+            self.obj = other.obj
+        return reasonable_match
 
 
 if __name__ == '__main__':
     here = os.path.dirname(__file__)
     image_files = glob(os.path.join(here, '..', 'test_images', '*.png'))
-
-    diff_history = deque([])
-    similarity_history = deque([])
-    for current_image, preview_image in preview_list(image_files):
-        diff_history.append(compare_preview_image_modified(current_image, preview_image))
-        similarity_history.append(compare_preview_image_similarity(current_image, preview_image))
-        for current_diff, preview_diff in preview_list(diff_history):
-            if current_diff < preview_diff:
-                print('curr: {}'.format(current_diff))
-            else:
-                print('prev: {}'.format(preview_diff))
-
-        for current_similarity, preview_similarity in preview_list(similarity_history):
-            if current_similarity < preview_similarity:
-                print('curr: {}'.format(current_similarity))
-            else:
-                print('prev: {}'.format(preview_similarity))
-
-        print('-'*80, end='\n\n')
+    groups = [list(g) for k, g in itertools.groupby(image_files, key=AdjacentKey)]
+    print(groups)
