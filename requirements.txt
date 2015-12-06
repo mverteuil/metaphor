@@ -1,0 +1,7 @@
+ImageHash==1.0
+numpy==1.10.1
+Pillow==3.0.0
+python-dateutil==2.4.2
+pytz==2015.6
+scipy==0.16.0
+six==1.10.0
