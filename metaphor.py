@@ -1,15 +1,12 @@
-from __future__ import print_function
-
-from collections import deque
 from datetime import timedelta
 from glob import glob
-from itertools import chain
 from itertools import groupby
 import os
 import time
 
 from PIL import Image
 from dateutil import parser as dateparser
+import click
 import imageio
 import ssim
 
@@ -42,21 +39,42 @@ class CompareImageSimilarityAndModifiedDate(object):
 
 
 class Metaphor(object):
-    def __init__(self, image_path):
-        self.image_path = image_path
+    def __init__(self, source_path, target_path):
+        self.source_path = source_path
+        self.target_path = target_path
+
+    def _create_target_path(self):
+        try:
+            os.makedirs(self.target_path)
+            click.echo('Target created.')
+        except os.error:
+            click.echo('Target already exists.')
 
     def get_images(self):
         for suffix in ('gif', 'png', 'jpg', 'tif', 'bmp', ):
-            for image_file in glob(os.path.join(self.image_path, '*.{suffix}'.format(suffix=suffix))):
+            for image_file in glob(os.path.join(self.source_path, '*.{suffix}'.format(suffix=suffix))):
                 yield image_file
 
     def get_sequences(self):
-        for _, group in groupby(self.get_images(), key=CompareImageSimilarityAndModifiedDate):
+        images = self.get_images()
+        for _, group in groupby(images, key=CompareImageSimilarityAndModifiedDate):
             yield list(group)
 
     def run(self):
-        for sequence_id, sequence in enumerate(self.get_sequences()):
+        self._create_target_path()
+        sequences = self.get_sequences()
+        for sequence_id, sequence in enumerate(sequences):
             sequence_filename = 'sequence_{sequence_id}.gif'.format(**locals())
+            target_filename = os.path.join(self.target_path, sequence_filename)
             image_sequence = [imageio.imread(frame) for frame in sequence]
-            imageio.mimwrite(sequence_filename, image_sequence, format='GIF', loop=0, duration=1.5)
-            print(sequence_filename, ' saved')
+            os.makedirs
+            imageio.mimwrite(target_filename, image_sequence, format='GIF', loop=0, duration=0.5)
+            click.echo(target_filename + ' saved')
+
+
+@click.command()
+@click.option('--source-path', default='test_images', type=click.Path(exists=True, file_okay=False))
+@click.option('--target-path', default='output', type=click.Path(exists=False, file_okay=False))
+def cli(source_path, target_path):
+    metaphor = Metaphor(source_path, target_path)
+    metaphor.run()
