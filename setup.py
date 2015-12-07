@@ -6,6 +6,10 @@ setup(
     py_modules=['metaphor'],
     install_requires=[
         'Click',
+        'Pillow',
+        'imageio',
+        'pyssim',
+        'python-dateutil',
     ],
     entry_points='''
         [console_scripts]
