@@ -2,6 +2,7 @@ from datetime import timedelta
 from glob import glob
 from itertools import groupby
 import os
+import shutil
 import time
 
 from PIL import Image
@@ -16,15 +17,18 @@ class CompareImageSimilarityAndModifiedDate(object):
 
     def __init__(self, image):
         self.image = image
+        click.echo('Image: ' + self.image)
 
     def __eq__(self, other):
         reasonable_match = self.similar_image(other) or self.similar_modified_date(other)
         if reasonable_match:
             self.image = other.image
+        click.echo('-' * 80)
         return reasonable_match
 
     def similar_image(self, other):
         self.similarity = ssim.compute_ssim(Image.open(self.image), Image.open(other.image))
+        click.echo('Computed similarity: {}'.format(self.similarity))
         return self.similarity > 0.55
 
     def similar_modified_date(self, other):
@@ -51,9 +55,10 @@ class Metaphor(object):
             click.echo('Target already exists.')
 
     def get_images(self):
+        image_files = []
         for suffix in ('gif', 'png', 'jpg', 'tif', 'bmp', ):
-            for image_file in glob(os.path.join(self.source_path, '*.{suffix}'.format(suffix=suffix))):
-                yield image_file
+            image_files += glob(os.path.join(self.source_path, '*.' + suffix))
+        return sorted(image_files, key=os.path.getmtime)
 
     def get_sequences(self):
         images = self.get_images()
@@ -67,7 +72,6 @@ class Metaphor(object):
             sequence_filename = 'sequence_{sequence_id}.gif'.format(**locals())
             target_filename = os.path.join(self.target_path, sequence_filename)
             image_sequence = [imageio.imread(frame) for frame in sequence]
-            os.makedirs
             imageio.mimwrite(target_filename, image_sequence, format='GIF', loop=0, duration=0.5)
             click.echo(target_filename + ' saved')
 
@@ -86,19 +90,22 @@ class Cutter(object):
             click.echo('Target already exists.')
 
     def get_images(self):
+        image_files = []
         for suffix in ('gif', 'png', 'jpg', 'tif', 'bmp', ):
-            for image_file in glob(os.path.join(self.source_path, '*.{suffix}'.format(suffix=suffix))):
-                yield image_file
+            image_files += glob(os.path.join(self.source_path, '*.' + suffix))
+        return sorted(image_files, key=os.path.getmtime)
 
     def run(self):
        self._create_target_path()
-       images = self.get_images()
-       for index, image in enumerate(images):
-           with Image.open(image) as img:
-               new_image = img.crop(self.box)
-               new_image_name = '{index}.png'.format(index=index)
-               new_image_path = os.path.join(self.target_path, new_image_name)
-               new_image.save(new_image_path, format='PNG')
+       source_images = self.get_images()
+       for index, source_image in enumerate(source_images):
+           with Image.open(source_image) as img:
+               target_image = img.crop(self.box)
+               target_image_name = '{index}.png'.format(index=index)
+               target_image_path = os.path.join(self.target_path, target_image_name)
+               target_image.save(target_image_path, format='PNG')
+               click.echo(target_image_path + ' saved')
+               shutil.copystat(source_image, target_image_path)
 
 
 @click.command()
