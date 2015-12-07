@@ -72,9 +72,50 @@ class Metaphor(object):
             click.echo(target_filename + ' saved')
 
 
+class Cutter(object):
+    def __init__(self, source_path, target_path, left, top, right, bottom):
+        self.source_path = source_path
+        self.target_path = target_path
+        self.box = (left, top, right, bottom)
+
+    def _create_target_path(self):
+        try:
+            os.makedirs(self.target_path)
+            click.echo('Target created.')
+        except os.error:
+            click.echo('Target already exists.')
+
+    def get_images(self):
+        for suffix in ('gif', 'png', 'jpg', 'tif', 'bmp', ):
+            for image_file in glob(os.path.join(self.source_path, '*.{suffix}'.format(suffix=suffix))):
+                yield image_file
+
+    def run(self):
+       self._create_target_path()
+       images = self.get_images()
+       for index, image in enumerate(images):
+           with Image.open(image) as img:
+               new_image = img.crop(self.box)
+               new_image_name = '{index}.png'.format(index=index)
+               new_image_path = os.path.join(self.target_path, new_image_name)
+               new_image.save(new_image_path, format='PNG')
+
+
 @click.command()
 @click.option('--source-path', default='test_images', type=click.Path(exists=True, file_okay=False))
 @click.option('--target-path', default='output', type=click.Path(exists=False, file_okay=False))
 def cli(source_path, target_path):
     metaphor = Metaphor(source_path, target_path)
     metaphor.run()
+
+
+@click.command()
+@click.option('--source-path', default='test_images', type=click.Path(exists=True, file_okay=False))
+@click.option('--target-path', default='output', type=click.Path(exists=False, file_okay=False))
+@click.option('--left', default=0, type=int)
+@click.option('--top', default=0, type=int)
+@click.option('--right', default=0, type=int)
+@click.option('--bottom', default=0, type=int)
+def cutter(source_path, target_path, left, top, right, bottom):
+    cutter = Cutter(source_path, target_path, left, top, right, bottom)
+    cutter.run()
