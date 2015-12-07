@@ -3,6 +3,7 @@ from __future__ import print_function
 from collections import deque
 from datetime import timedelta
 from glob import glob
+from itertools import chain
 from itertools import groupby
 import os
 import time
@@ -14,7 +15,7 @@ import ssim
 
 
 class CompareImageSimilarityAndModifiedDate(object):
-    __slots__ = ['image']
+    __slots__ = ['image', 'similarity']
 
     def __init__(self, image):
         self.image = image
@@ -40,12 +41,22 @@ class CompareImageSimilarityAndModifiedDate(object):
         return self.similarity < 0.5 and time_interval < timedelta(seconds=30)
 
 
-if __name__ == '__main__':
-    here = os.path.dirname(__file__)
-    image_files = glob(os.path.join(here, '..', 'test_images', '*.png'))
-    sequences = [tuple(g) for _, g in groupby(image_files, key=CompareImageSimilarityAndModifiedDate)]
-    for sequence_id, sequence in enumerate(sequences):
-        sequence_filename = 'sequence_{sequence_id}.gif'.format(**locals())
-        image_sequence = [imageio.imread(frame) for frame in sequence]
-        imageio.mimwrite(sequence_filename, image_sequence, format='GIF', loop=0, duration=1.5)
-        print(sequence_filename, ' saved')
+class Metaphor(object):
+    def __init__(self, image_path):
+        self.image_path = image_path
+
+    def get_images(self):
+        for suffix in ('gif', 'png', 'jpg', 'tif', 'bmp', ):
+            for image_file in glob(os.path.join(self.image_path, '*.{suffix}'.format(suffix=suffix))):
+                yield image_file
+
+    def get_sequences(self):
+        for _, group in groupby(self.get_images(), key=CompareImageSimilarityAndModifiedDate):
+            yield list(group)
+
+    def run(self):
+        for sequence_id, sequence in enumerate(self.get_sequences()):
+            sequence_filename = 'sequence_{sequence_id}.gif'.format(**locals())
+            image_sequence = [imageio.imread(frame) for frame in sequence]
+            imageio.mimwrite(sequence_filename, image_sequence, format='GIF', loop=0, duration=1.5)
+            print(sequence_filename, ' saved')
